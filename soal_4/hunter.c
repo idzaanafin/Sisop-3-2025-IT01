@@ -1,191 +1,192 @@
-// hunter.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <unistd.h>
-#include "shm_common.h"
-#include <string.h>
-#define MAX_HUNTER 10
-#define NAME_LEN 32
+
+#define MAX_HUNTER 50
+#define MAX_DUNGEON 50
 
 typedef struct {
-    int active;
-    char name[NAME_LEN];
-    int level;
-    int hp;
-    char location[NAME_LEN];
-    char activity[NAME_LEN];
+    int id;
+    char name[32];
+    char password[32];
+    int level, exp;
+    int atk, hp, def;
+    int banned;
+    int notif_on;
+    int status;
 } Hunter;
 
 typedef struct {
-    Hunter hunters[MAX_HUNTER];
-} SharedMemory;
+    int id;
+    char name[32];
+    int level_min;
+    int atk_reward, hp_reward, def_reward, exp_reward;
+    int active;
+} Dungeon;
 
+Hunter *hunters;
+Dungeon *dungeons;
+int shmid_hunter, shmid_dungeon;
 
-void hunter_menu(struct Hunter *hunter) {
-    while (1) {
-        printf("\n=== HUNTER SYSTEM ===\n");
-        printf("=== %s's MENU ===\n", hunter->username);
-        printf("1. List Dungeon\n");
-        printf("2. Raid\n");
-        printf("3. Battle\n");
-        printf("4. Toggle Notification\n");
-        printf("5. Exit\n");
-        printf("Choice: ");
-        int choice;
-        scanf("%d", &choice);
+void init_shared_memory() {
+    key_t kh = ftok("system.c", 'H');
+    key_t kd = ftok("system.c", 'D');
+    shmid_hunter = shmget(kh, sizeof(Hunter) * MAX_HUNTER, 0666);
+    shmid_dungeon = shmget(kd, sizeof(Dungeon) * MAX_DUNGEON, 0666);
+    if (shmid_hunter == -1 || shmid_dungeon == -1) {
+        puts("Sistem belum dijalankan.");
+        exit(1);
+    }
+    hunters = shmat(shmid_hunter, NULL, 0);
+    dungeons = shmat(shmid_dungeon, NULL, 0);
+}
 
-        if (choice == 1) {
-            printf("Belum ada dungeon (placeholder).\n");
-        } else if (choice == 2) {
-            printf("Raid dimulai... (placeholder).\n");
-        } else if (choice == 3) {
-            printf("Battle mulai... (placeholder).\n");
-        } else if (choice == 4) {
-            printf("Notifikasi: (placeholder toggle).\n");
-        } else if (choice == 5) {
-            printf("Logout dari hunter.\n");
-            break;
-        } else {
-            printf("Pilihan tidak valid.\n");
+void register_hunter() {
+    char name[32], pass[32];
+    printf("Nama: "); scanf("%s", name);
+    printf("Password: "); scanf("%s", pass);
+    for (int i = 0; i < MAX_HUNTER; i++) {
+        if (strcmp(hunters[i].name, name) == 0) {
+            puts("Nama sudah terdaftar.");
+            return;
         }
+    }
+    for (int i = 0; i < MAX_HUNTER; i++) {
+        if (hunters[i].id == 0) {
+            hunters[i].id = i + 1;
+            strcpy(hunters[i].name, name);
+            strcpy(hunters[i].password, pass);
+            hunters[i].level = 1;
+            hunters[i].exp = 0;
+            hunters[i].atk = 10;
+            hunters[i].hp = 100;
+            hunters[i].def = 5;
+            hunters[i].banned = 0;
+            hunters[i].notif_on = 0;
+            hunters[i].status = 0;
+            puts("Registrasi berhasil!");
+            return;
+        }
+    }
+    puts("Slot penuh.");
+}
+
+int login() {
+    char name[32], pass[32];
+    printf("Nama: "); scanf("%s", name);
+    printf("Password: "); scanf("%s", pass);
+    for (int i = 0; i < MAX_HUNTER; i++) {
+        if (strcmp(hunters[i].name, name) == 0 && strcmp(hunters[i].password, pass) == 0) {
+            if (hunters[i].banned) {
+                puts("Akun dibanned.");
+                return -1;
+            }
+            hunters[i].status = 1;
+            return i;
+        }
+    }
+    puts("Login gagal.");
+    return -1;
+}
+
+void show_status(Hunter h) {
+    printf("Nama: %s | Level: %d | EXP: %d | ATK: %d | HP: %d | DEF: %d\n",
+           h.name, h.level, h.exp, h.atk, h.hp, h.def);
+}
+
+void raid_dungeon(int idx) {
+    int did;
+    puts("\n== Dungeon Tersedia ==");
+    for (int i = 0; i < MAX_DUNGEON; i++) {
+        if (dungeons[i].active && dungeons[i].level_min <= hunters[idx].level) {
+            printf("[%d] %s (MinLv %d) +%d EXP\n", dungeons[i].id, dungeons[i].name,
+                   dungeons[i].level_min, dungeons[i].exp_reward);
+        }
+    }
+    printf("Pilih ID dungeon: ");
+    scanf("%d", &did);
+    for (int i = 0; i < MAX_DUNGEON; i++) {
+        if (dungeons[i].id == did && dungeons[i].active) {
+            if (hunters[idx].level < dungeons[i].level_min) {
+                puts("Level Anda belum cukup.");
+                return;
+            }
+            puts("Raid berhasil!");
+            hunters[idx].atk += dungeons[i].atk_reward;
+            hunters[idx].hp += dungeons[i].hp_reward;
+            hunters[idx].def += dungeons[i].def_reward;
+            hunters[idx].exp += dungeons[i].exp_reward;
+            if (hunters[idx].exp >= hunters[idx].level * 100) {
+                hunters[idx].level++;
+                puts("Level up!");
+            }
+            return;
+        }
+    }
+    puts("Dungeon tidak valid.");
+}
+
+void battle(int idx) {
+    int tid;
+    puts("== Daftar Lawan ==");
+    for (int i = 0; i < MAX_HUNTER; i++) {
+        if (i != idx && hunters[i].id > 0) {
+            printf("[%d] %s (Lv %d)\n", i, hunters[i].name, hunters[i].level);
+        }
+    }
+    printf("Pilih ID lawan: ");
+    scanf("%d", &tid);
+    if (tid < 0 || tid >= MAX_HUNTER || tid == idx || hunters[tid].id == 0) {
+        puts("Lawan tidak valid.");
+        return;
+    }
+    int my_power = hunters[idx].atk + hunters[idx].def + hunters[idx].hp;
+    int enemy_power = hunters[tid].atk + hunters[tid].def + hunters[tid].hp;
+    if (my_power >= enemy_power) {
+        puts("Kamu menang!");
+        hunters[idx].exp += 50;
+    } else {
+        puts("Kamu kalah...");
     }
 }
 
-void show_all_hunters(struct SystemData *sys) {
-    printf("\n=== HUNTER INFO ===\n");
-    if (sys->num_hunters == 0) {
-        printf("Belum ada hunter terdaftar.\n");
-        return;
-    }
-
-    for (int i = 0; i < sys->num_hunters; i++) {
-        struct Hunter *h = &sys->hunters[i];
-        printf("Name: %s\t", h->username);
-        printf("Level: %d\tEXP: %d\t", h->level, h->exp);
-        printf("ATK: %d\tHP: %d\tDEF: %d\t", h->atk, h->hp, h->def);
-        printf("Status: %s\n", h->banned ? "BANNED" : "Active");
+void main_menu(int idx) {
+    while (1) {
+        puts("\n== MENU HUNTER ==");
+        puts("1. Lihat Status");
+        puts("2. Raid Dungeon");
+        puts("3. Battle Hunter");
+        puts("4. Logout");
+        printf("Pilih: ");
+        int c;
+        scanf("%d", &c);
+        if (c == 1) show_status(hunters[idx]);
+        else if (c == 2) raid_dungeon(idx);
+        else if (c == 3) battle(idx);
+        else if (c == 4) return;
+        else puts("Pilihan salah.");
     }
 }
 
 int main() {
-    key_t system_key = get_system_key();
-    int system_shmid = shmget(system_key, sizeof(struct SystemData), 0666);
-    if (system_shmid == -1) {
-        perror("shmget system");
-        return 1;
-    }
-
-    struct SystemData *sys = shmat(system_shmid, NULL, 0);
-    if (sys == (void *) -1) {
-        perror("shmat system");
-        return 1;
-    }
-
+    init_shared_memory();
     while (1) {
-        printf("=== HUNTER MENU ===\n");
-        printf("1. Register\n2. Login\n3. Exit\nChoice: ");
-        int choice;
-        scanf("%d", &choice);
-
-        if (choice == 1) {
-            if (sys->num_hunters >= MAX_HUNTERS) {
-                printf("Hunter penuh!\n");
-                continue;
-            }
-
-            struct Hunter *h = &sys->hunters[sys->num_hunters];
-
-            printf("Username: ");
-            scanf("%s", h->username);
-
-            // Cek duplikat username
-            int duplicate = 0;
-            for (int i = 0; i < sys->num_hunters; i++) {
-                if (strcmp(sys->hunters[i].username, h->username) == 0) {
-                    duplicate = 1;
-                    break;
-                }
-            }
-            if (duplicate) {
-                printf("Username sudah terdaftar!\n");
-                continue;
-            }
-
-            // Set atribut awal
-            h->level = 1;
-            h->exp = 0;
-            h->atk = 10;
-            h->hp = 100;
-            h->def = 5;
-            h->banned = 0;
-            h->shm_key = ftok(".", 100 + sys->num_hunters); // key unik untuk hunter
-
-            // Buat shared memory hunter sendiri
-            int hunter_shmid = shmget(h->shm_key, sizeof(struct Hunter), IPC_CREAT | 0666);
-            if (hunter_shmid == -1) {
-                perror("shmget hunter");
-                continue;
-            }
-
-            struct Hunter *private_hunter = shmat(hunter_shmid, NULL, 0);
-            if (private_hunter == (void *) -1) {
-                perror("shmat hunter");
-                continue;
-            }
-
-            memcpy(private_hunter, h, sizeof(struct Hunter)); // salin data
-
-            shmdt(private_hunter);
-
-            sys->num_hunters++;
-
-            printf("Registration success!\n");
-        } else if (choice == 2) {
-            char username[32];
-            printf("Username: ");
-            scanf("%s", username);
-
-            int found = -1;
-            for (int i = 0; i < sys->num_hunters; i++) {
-                if (strcmp(sys->hunters[i].username, username) == 0) {
-                    found = i;
-                    break;
-                }
-            }
-
-            if (found == -1) {
-                printf("Username tidak ditemukan!\n");
-                continue;
-            }
-
-            struct Hunter *h = &sys->hunters[found];
-
-            int hunter_shmid = shmget(h->shm_key, sizeof(struct Hunter), 0666);
-            if (hunter_shmid == -1) {
-                perror("shmget login");
-                continue;
-            }
-
-            struct Hunter *private_hunter = shmat(hunter_shmid, NULL, 0);
-            if (private_hunter == (void *) -1) {
-                perror("shmat login");
-                continue;
-            }
-
-            printf("Login success!\n");
-            hunter_menu(private_hunter);
-            shmdt(private_hunter);
-        } else if (choice == 3) {
-            printf("Keluar...\n");
-            break;
-        } else {
-            printf("Pilihan tidak valid.\n");
-        }
+        puts("\n== MENU AWAL ==");
+        puts("1. Login");
+        puts("2. Register");
+        puts("3. Keluar");
+        int c;
+        printf("Pilih: ");
+        scanf("%d", &c);
+        if (c == 1) {
+            int idx = login();
+            if (idx >= 0) main_menu(idx);
+        } else if (c == 2) register_hunter();
+        else if (c == 3) break;
     }
-
-    shmdt(sys);
     return 0;
 }
