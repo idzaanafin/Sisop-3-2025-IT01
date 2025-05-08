@@ -949,6 +949,7 @@ Maka Paket akan dikirim dengan dokumentasi sebagai berikut:
 - Kondisi Log saat paket exspres sudah diantar
   ![Screenshot 2025-05-03 162555](https://github.com/user-attachments/assets/ecd759b2-79c5-4081-82c4-000f81035eec)
 
+Kemudian untuk program paket reguler akan dikirim manual oleh user, dan didalam program ini juga bisa untuk mengecek status pengiriman, dan menampilkan list seperti yang diatas tadi. Dan setiap pengiriman ini juga akan dicatat dalam file log yang sama yaitu delivery.log. Untuk kode programnya sebagai berikut :
 
 ```
 #include <stdio.h>
@@ -1163,6 +1164,17 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 ```
+Setelah kode program itu dijalan kan dengan ./dispatcher maka akan berbagai pilihan yang bisa dilakukan oleh user yaitu mengirim paket, cek status paket, menampilkan list. Dengan dokumentasi sebagai berikut :
+- Mengirim beberapa paket secara manual dan mengecek di file log
+  ![Screenshot 2025-05-03 162815](https://github.com/user-attachments/assets/a68d0a59-7e63-47a0-88b4-799a63dce0a6)
+
+- Mencoba fitur cek status
+  ![Screenshot 2025-05-03 163025](https://github.com/user-attachments/assets/4c0b561f-5df9-44ca-83ce-32f598ace228)
+
+- Menampilkan List yang beberapa paket reguler sudah berubah statusnya
+![Screenshot 2025-05-03 163103](https://github.com/user-attachments/assets/8a4eebc4-3db7-4e5e-8b20-7905aad31d86)
+
+
 
 # Soal 3
 
