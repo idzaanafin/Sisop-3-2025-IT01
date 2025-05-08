@@ -1554,6 +1554,35 @@ int main() {
 }
 
 ```
+
+##### Connection rpc
+- Dungeon
+```
+    srand(time(NULL));
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in server_addr = {0};
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(9000);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+    bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+    listen(server_fd, 5);
+    printf("Dungeon server listening on port 9000...\n");
+
+```
+- Client
+```
+int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in server_addr = {0};
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(9000);
+    inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
+
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Gagal terhubung ke server");
+        return 1;
+    }
+```
 #### Sightseeing
 main menu
 ![image](https://github.com/user-attachments/assets/519f035d-0316-4dd4-9284-addbd9c730d4)
