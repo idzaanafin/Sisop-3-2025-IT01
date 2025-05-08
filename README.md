@@ -1638,3 +1638,4 @@ saat musuh berhasil dikalahkan akan memberikan gold dan kembali ke main menu
 saat equip senjata maka stats akan terupdate menyesuaikan dengan senjata yang kita pakai dan berapa musuh yang sudah kita kalahkan
 
 # Soal 4
+Membuat program hunter dan system yang mana menggunakan shared memory, 
