@@ -824,6 +824,9 @@ Program client disini berfungsi sebagai interface user untuk terhubung ke server
 
   
 # Soal 2 
+Membuat 2 program untuk pengiriman paket dengan 2 jenis, yaitu paket reguler dan exspres
+Untuk Paket exspres disimpan dalam delivery_agent.c dan akan dikirim otomatis ketika program dijalankan serta mencatatnya dalam file log (delivery.log)
+Berikut adalah kode programnya :
 ```
 #include <stdio.h>
 #include <stdlib.h>
