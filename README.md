@@ -1669,16 +1669,6 @@ saat equip senjata maka stats akan terupdate menyesuaikan dengan senjata yang ki
 # Soal 4
 Membuat program hunter dan system yang mana menggunakan shared memory, 
 
-## system.c
-```
-kode
-```
-
-## hunter.c 
-```
-kode
-```
-
 #### login hunter
 ![image](https://github.com/user-attachments/assets/6d1dd812-9607-4cfe-833d-3e54cf3ca1b5)
 
@@ -1690,5 +1680,14 @@ kode
 #### dungeon info
 ![image](https://github.com/user-attachments/assets/73016a6b-3809-4440-8399-b2368516e522)
 ![image](https://github.com/user-attachments/assets/7ef7b646-06a2-4bec-82e5-08b3020bbc42)
+
+#### raid
+![image](https://github.com/user-attachments/assets/abf559fa-05c6-47d9-840c-b6f10fa79749)
+
+#### battle
+![image](https://github.com/user-attachments/assets/f61945ff-20df-432a-8e12-480948cf3a8a)
+
+#### ban/unban
+![image](https://github.com/user-attachments/assets/12e56261-87ef-4f6e-8d1c-93027b64286e)
 
 
