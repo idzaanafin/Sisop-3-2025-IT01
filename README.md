@@ -1639,3 +1639,14 @@ saat equip senjata maka stats akan terupdate menyesuaikan dengan senjata yang ki
 
 # Soal 4
 Membuat program hunter dan system yang mana menggunakan shared memory, 
+
+## system.c
+```
+kode
+```
+
+## hunter.c 
+```
+kode
+```
+
