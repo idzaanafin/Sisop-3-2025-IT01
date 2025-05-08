@@ -1560,10 +1560,12 @@ main menu
 
 #### Status Check
 ![image](https://github.com/user-attachments/assets/91ca6d7a-3224-4212-bb8b-bea26dded761)
+
 Di player ketika menginputkan "1" akan memunculkan Stat
 
 #### Weapon Shop
 ![image](https://github.com/user-attachments/assets/b6babb51-28e6-4ade-a5d5-728837275389)
+
 Saat menginputkan "3" akan memunculkan opsi senjata yang ada dari shop.h
 
 ## shop.h
@@ -1619,16 +1621,20 @@ static int buy_weapon(const char* name, PlayerStats *player, Weapon *inventory, 
 
 #### Handy Inventory
 ![image](https://github.com/user-attachments/assets/b9e65001-7e71-4756-8895-b85bd5908fd9)
+
 Saat menginputkan "2" akan menampilkan opsi weapon yang dimiliki
 
 #### Battle Mode
 ![image](https://github.com/user-attachments/assets/98389118-e94a-4db9-818d-5d659711db31)
+
 musuh akan muncul dengan Hp random antara 50-200 point, melakukan attack dengan memasukkan text attack, dan exit untuk menutup battle mode
 
 ![image](https://github.com/user-attachments/assets/53875f59-de9c-4e22-b365-00692c291064)
+
 saat musuh berhasil dikalahkan akan memberikan gold dan kembali ke main menu
 
 ![image](https://github.com/user-attachments/assets/1d181fa0-cfc9-4617-80fc-c1bc322c931c)
+
 saat equip senjata maka stats akan terupdate menyesuaikan dengan senjata yang kita pakai dan berapa musuh yang sudah kita kalahkan
 
 # Soal 4
