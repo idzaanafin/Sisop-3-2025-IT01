@@ -1,178 +1,159 @@
-// system.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <time.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <unistd.h>
-#include "shm_common.h"
 
-void show_all_hunters(struct SystemData *sys) {
-    printf("\n=== HUNTER INFO ===\n");
-    if (sys->num_hunters == 0) {
-        printf("Belum ada hunter terdaftar.\n");
-        return;
-    }
+#define MAX_HUNTER 50
+#define MAX_DUNGEON 50
 
-    for (int i = 0; i < sys->num_hunters; i++) {
-        struct Hunter *h = &sys->hunters[i];
-        printf("Name: %s\t", h->username);
-        printf("Level: %d\tEXP: %d\t", h->level, h->exp);
-        printf("ATK: %d\tHP: %d\tDEF: %d\t", h->atk, h->hp, h->def);
-        printf("Status: %s\n", h->banned ? "BANNED" : "Active");
-    }
+typedef struct {
+    int id;
+    char name[32];
+    char password[32];
+    char key[32];
+    int level;
+    int exp;
+    int atk, hp, def;
+    int banned;   // 0 = no, 1 = yes
+    int notify;   // 0 = off, 1 = on
+    int active;   // 0 = inactive, 1 = active (registered)
+    int status;   // 0 = logout, 1 = login
+} Hunter;
+
+typedef struct {
+    int id;
+    char name[32];
+    char key[32];
+    int min_level;
+    int atk_reward, hp_reward, def_reward, exp_reward;
+    int active; // 0 = not exists, 1 = exists
+} Dungeon;
+
+Hunter *hunters;
+Dungeon *dungeons;
+int shmid_hunter, shmid_dungeon;
+
+void init_shared_memory() {
+    key_t key_hunter = ftok("system.c", 'H');
+    key_t key_dungeon = ftok("system.c", 'D');
+
+    shmid_hunter = shmget(key_hunter, sizeof(Hunter) * MAX_HUNTER, IPC_CREAT | 0666);
+    shmid_dungeon = shmget(key_dungeon, sizeof(Dungeon) * MAX_DUNGEON, IPC_CREAT | 0666);
+
+    hunters = shmat(shmid_hunter, NULL, 0);
+    dungeons = shmat(shmid_dungeon, NULL, 0);
 }
 
-void reset_hunter(struct SystemData *sys) {
-    char username[32];
-    printf("Masukkan username untuk reset: ");
-    scanf("%s", username);
-
-    for (int i = 0; i < sys->num_hunters; i++) {
-        struct Hunter *h = &sys->hunters[i];
-        if (strcmp(h->username, username) == 0) {
-            h->level = 1;
-            h->exp = 0;
-            h->atk = 10;
-            h->hp = 100;
-            h->def = 5;
-            h->banned = 0;
-            printf("Hunter berhasil di-reset!\n");
-            return;
+void list_hunters() {
+    printf("\n--- Daftar Hunter ---\n");
+    for (int i = 0; i < MAX_HUNTER; i++) {
+        if (hunters[i].active) {
+            printf("Name: %s | Key: %s | Level: %d | EXP: %d | ATK: %d | HP: %d | DEF: %d | %s\n",
+                hunters[i].name, hunters[i].key, hunters[i].level, hunters[i].exp,
+                hunters[i].atk, hunters[i].hp, hunters[i].def,
+                hunters[i].banned ? "BANNED" : "ACTIVE");
         }
     }
-    printf("Hunter tidak ditemukan!\n");
 }
 
-void ban_hunter(struct SystemData *sys) {
-    char username[32];
-    printf("Masukkan username yang ingin di-ban: ");
-    scanf("%s", username);
-
-    for (int i = 0; i < sys->num_hunters; i++) {
-        if (strcmp(sys->hunters[i].username, username) == 0) {
-            sys->hunters[i].banned = 1;
-            printf("Hunter berhasil di-ban!\n");
-            return;
+void list_dungeons() {
+    printf("\n--- Daftar Dungeon ---\n");
+    for (int i = 0; i < MAX_DUNGEON; i++) {
+        if (dungeons[i].active) {
+            printf("Name: %s | Key: %s | MinLevel: %d | ATK: %d | HP: %d | DEF: %d | EXP: %d\n",
+                dungeons[i].name, dungeons[i].key, dungeons[i].min_level,
+                dungeons[i].atk_reward, dungeons[i].hp_reward,
+                dungeons[i].def_reward, dungeons[i].exp_reward);
         }
     }
-    printf("Hunter tidak ditemukan!\n");
 }
 
-char *dungeon_names[] = {
-    "Double Dungeon", "Demon Castle", "Pyramid Dungeon", "Red Gate Dungeon",
-    "Hunters Guild Dungeon", "Busan A-Rank Dungeon", "Insects Dungeon",
-    "Goblins Dungeon", "D-Rank Dungeon", "Gwanak Mountain Dungeon",
-    "Hapjeong Subway Station Dungeon"
-};
-
-void generate_dungeon(struct SystemData *sys) {
-    if (sys->num_dungeons >= MAX_DUNGEONS) {
-        printf("Dungeon penuh!\n");
-        return;
-    }
-
+void generate_dungeon() {
     srand(time(NULL));
-    struct Dungeon *d = &sys->dungeons[sys->num_dungeons];
-    strcpy(d->name, dungeon_names[rand() % 11]);
-    d->min_level = 1 + rand() % 5;
-    d->reward_atk = 100 + rand() % 51;
-    d->reward_hp = 50 + rand() % 51;
-    d->reward_def = 25 + rand() % 26;
-    d->reward_exp = 150 + rand() % 151;
-
-    sys->num_dungeons++;
-
-    printf("Dungeon generated!\nName: %s\nMinimum Level: %d\n", d->name, d->min_level);
-}
-
-void show_hunters(struct SystemData *sys) {
-    printf("\n=== HUNTER INFO ===\n");
-    for (int i = 0; i < sys->num_hunters; i++) {
-        struct Hunter *h = &sys->hunters[i];
-        printf("Name: %s\tLevel: %d\tEXP: %d\tATK: %d\tHP: %d\tDEF: %d\tStatus: %s\n",
-            h->username, h->level, h->exp, h->atk, h->hp, h->def,
-            h->banned ? "BANNED" : "Active");
+    char names[][10] = {"Cave", "Ruins", "Tower", "Forest", "Hell"};
+    for (int i = 0; i < MAX_DUNGEON; i++) {
+        if (!dungeons[i].active) {
+            dungeons[i].id = i + 1;
+            snprintf(dungeons[i].name, 32, "%s_%d", names[rand() % 5], rand() % 100);
+            snprintf(dungeons[i].key, 32, "DG%03d", rand() % 1000);
+            dungeons[i].min_level = rand() % 5 + 1;
+            dungeons[i].atk_reward = rand() % 51 + 100;
+            dungeons[i].hp_reward = rand() % 51 + 50;
+            dungeons[i].def_reward = rand() % 26 + 25;
+            dungeons[i].exp_reward = rand() % 151 + 150;
+            dungeons[i].active = 1;
+            printf("Dungeon %s dibuat!\n", dungeons[i].name);
+            break;
+        }
     }
 }
 
-void show_dungeons(struct SystemData *sys) {
-    printf("\n=== DUNGEON INFO ===\n");
-    if (sys->num_dungeons == 0) {
-        printf("Belum ada dungeon yang dibuat.\n");
-        return;
+void ban_unban_hunter() {
+    char key[32];
+    printf("Masukkan key hunter: ");
+    scanf("%s", key);
+    for (int i = 0; i < MAX_HUNTER; i++) {
+        if (hunters[i].active && strcmp(hunters[i].key, key) == 0) {
+            hunters[i].banned = !hunters[i].banned;
+            printf("Hunter %s sekarang %s.\n", hunters[i].name,
+                   hunters[i].banned ? "BANNED" : "UNBANNED");
+            return;
+        }
     }
+    printf("Hunter tidak ditemukan.\n");
+}
 
-    for (int i = 0; i < sys->num_dungeons; i++) {
-        struct Dungeon *d = &sys->dungeons[i];
-        printf("%d. %s\n", i + 1, d->name);
-        printf("   - Minimum Level: %d\n", d->min_level);
-        printf("   - Reward ATK: %d\n", d->reward_atk);
-        printf("   - Reward HP : %d\n", d->reward_hp);
-        printf("   - Reward DEF: %d\n", d->reward_def);
-        printf("   - Reward EXP: %d\n\n", d->reward_exp);
+void reset_hunter() {
+    char key[32];
+    printf("Key hunter yang akan di-reset: ");
+    scanf("%s", key);
+    for (int i = 0; i < MAX_HUNTER; i++) {
+        if (hunters[i].active && strcmp(hunters[i].key, key) == 0) {
+            hunters[i].level = 1;
+            hunters[i].exp = 0;
+            hunters[i].atk = 10;
+            hunters[i].hp = 100;
+            hunters[i].def = 5;
+            printf("Hunter %s di-reset ke stats awal.\n", hunters[i].name);
+            return;
+        }
     }
 }
 
+void shutdown() {
+    shmdt(hunters);
+    shmdt(dungeons);
+    shmctl(shmid_hunter, IPC_RMID, NULL);
+    shmctl(shmid_dungeon, IPC_RMID, NULL);
+    printf("Sistem dimatikan dan shared memory dihapus.\n");
+    exit(0);
+}
 
 int main() {
-    key_t system_key = get_system_key();
-    int system_shmid = shmget(system_key, sizeof(struct SystemData), IPC_CREAT | 0666);
-    if (system_shmid == -1) {
-        perror("shmget");
-        return 1;
-    }
-
-    struct SystemData *sys = shmat(system_shmid, NULL, 0);
-    if (sys == (void *) -1) {
-        perror("shmat");
-        return 1;
-    }
-
-    if (sys->init != 1) {
-        sys->num_hunters = 0;
-        sys->init = 1;
-    }
-
+    init_shared_memory();
+    int choice;
     while (1) {
-        printf("\n=== SYSTEM MENU ===\n");
-        printf("1. Hunter Info\n");
-        printf("2. Dungeon Info (todo)\n");
-        printf("3. Generate Dungeon \n");
-        printf("4. Ban Hunter\n");
-        printf("5. Reset Hunter\n");
-        printf("6. Exit\n");
-        printf("Choice: ");
-
-        int choice;
+        printf("\n=== ADMIN MENU ===\n");
+        printf("1. Lihat semua hunter\n");
+        printf("2. Lihat semua dungeon\n");
+        printf("3. Tambah dungeon\n");
+        printf("4. Ban/unban hunter\n");
+        printf("5. Reset hunter\n");
+        printf("6. Matikan sistem\n");
+        printf("Pilih: ");
         scanf("%d", &choice);
-
         switch (choice) {
-            case 1:
-                show_all_hunters(sys);
-                break;
-            case 2:
-                show_dungeons(sys);
-                break;
-            case 3:
-                generate_dungeon(sys);
-                break;
-            case 4:
-                ban_hunter(sys);
-                break;
-            case 5:
-                reset_hunter(sys);
-                break;
-            case 6:
-                printf("Keluar dari sistem.\n");
-                shmdt(sys);
-                return 0;
-            default:
-                printf("Pilihan tidak valid.\n");
+            case 1: list_hunters(); break;
+            case 2: list_dungeons(); break;
+            case 3: generate_dungeon(); break;
+            case 4: ban_unban_hunter(); break;
+            case 5: reset_hunter(); break;
+            case 6: shutdown(); break;
+            default: printf("Pilihan salah!\n");
         }
     }
-
-    shmdt(sys);
     return 0;
 }
-
